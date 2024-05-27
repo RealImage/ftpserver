@@ -142,6 +142,11 @@ func signalHandler() {
 func confFileContent() []byte {
 	str := `{
   "version": 1,
+  "idle_timeout": 86400,
+  "logging": {
+    "ftp_exchanges": true,
+    "file_accesses": true
+  },
   "accesses": [
     {
       "user": "test",
