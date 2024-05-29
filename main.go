@@ -2,6 +2,8 @@
 package main
 
 import (
+	"bytes"
+	"crypto/md5"
 	"flag"
 	"io"
 	"io/ioutil"
@@ -22,6 +24,24 @@ var (
 	ftpServer *ftpserver.FtpServer
 	driver    *server.Server
 )
+
+var deprecatedConfFileChecksum = md5.New().Sum([]byte(`{
+  "version": 1,
+  "accesses": [
+    {
+      "user": "test",
+      "pass": "test",
+      "fs": "os",
+      "params": {
+        "basePath": "/tmp"
+      }
+    }
+  ],
+  "passive_transfer_port_range": {
+    "start": 2122,
+    "end": 2130
+  }
+}`))
 
 func main() {
 	// Arguments vars
@@ -48,9 +68,29 @@ func main() {
 	}
 
 	if autoCreate {
-		if _, err := os.Stat(confFile); err != nil && os.IsNotExist(err) {
-			logger.Warn("No conf file, creating one", "confFile", confFile)
+		shouldCreateOrUpdate := false
+		_, err := os.Stat(confFile)
+		if  err != nil {
+			if os.IsNotExist(err) {
+				logger.Warn("No conf file, creating one", "confFile", confFile)
+				shouldCreateOrUpdate = true
+			}
+		} else {
+			file, errOpen := os.ReadFile(confFile)
+			if errOpen != nil {
+				logger.Error("Cannot open config file", "err", errOpen)
+				return
+			}
 
+			if bytes.Equal(md5.New().Sum(bytes.TrimSpace(file)), []byte(deprecatedConfFileChecksum)) {
+				logger.Warn("Deprecated conf file found, writing new conf")
+				shouldCreateOrUpdate = true
+			} else {
+				logger.Warn("Existing conf file is not same a deprecated one. No modifying.")
+			}
+		}
+
+		if shouldCreateOrUpdate {
 			if err := ioutil.WriteFile(confFile, confFileContent(), 0600); err != nil { //nolint: gomnd
 				logger.Warn("Couldn't create conf file", "confFile", confFile)
 			}
