@@ -25,6 +25,24 @@ var (
 	driver    *server.Server
 )
 
+var deprecatedConfFileChecksum = md5.New().Sum([]byte(`{
+  "version": 1,
+  "accesses": [
+    {
+      "user": "test",
+      "pass": "test",
+      "fs": "os",
+      "params": {
+        "basePath": "/tmp"
+      }
+    }
+  ],
+  "passive_transfer_port_range": {
+    "start": 2122,
+    "end": 2130
+  }
+}`))
+
 func main() {
 	// Arguments vars
 	var confFile string
@@ -64,9 +82,11 @@ func main() {
 				return
 			}
 
-			if bytes.Equal(md5.New().Sum(file), md5.New().Sum(deprecatedConfFileContent())) {
-				logger.Warn("Deprecated conf file found, writing new conf", "confFile", string(file))
+			if bytes.Equal(md5.New().Sum(bytes.TrimSpace(file)), []byte(deprecatedConfFileChecksum)) {
+				logger.Warn("Deprecated conf file found, writing new conf")
 				shouldCreateOrUpdate = true
+			} else {
+				logger.Warn("Existing conf file is not same a deprecated one. No modifying.")
 			}
 		}
 
@@ -167,28 +187,6 @@ func confFileContent() []byte {
     "ftp_exchanges": true,
     "file_accesses": true
   },
-  "accesses": [
-    {
-      "user": "test",
-      "pass": "test",
-      "fs": "os",
-      "params": {
-        "basePath": "/tmp"
-      }
-    }
-  ],
-  "passive_transfer_port_range": {
-    "start": 2122,
-    "end": 2130
-  }
-}`
-
-	return []byte(str)
-}
-
-func deprecatedConfFileContent() []byte {
-	str := `{
-  "version": 1,
   "accesses": [
     {
       "user": "test",
