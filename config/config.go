@@ -136,7 +136,7 @@ func (c *Config) Prepare() error {
 		ct.ListenAddress = "0.0.0.0:2121"
 	}
 
-	if publicHost := os.Getenv("PUBLIC_HOST"); publicHost != "" {
+	if publicHost := os.Getenv("PUBLIC_HOST"); ct.PublicHost == "" && publicHost != "" {
 		ct.PublicHost = publicHost
 	}
 
